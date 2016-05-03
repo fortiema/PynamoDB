@@ -7,8 +7,7 @@ from base64 import b64encode, b64decode
 from delorean import Delorean, parse
 from pynamodb.constants import (
     STRING, NUMBER, BINARY, UTC, DATETIME_FORMAT, BINARY_SET, STRING_SET, NUMBER_SET,
-    DEFAULT_ENCODING
-)
+    DEFAULT_ENCODING, MAP)
 
 
 class Attribute(object):
@@ -85,6 +84,31 @@ class SetMixin(object):
         """
         if value and len(value):
             return set([json.loads(val) for val in value])
+
+
+class MapMixin(object):
+    """
+    Adds (de)serialization methods for maps
+    """
+    def __init__(self, inner_type=STRING):
+        self.inner_type = inner_type
+
+    def serialize(self, value):
+        if value is not None:
+            try:
+                value.items()
+            except TypeError:
+                value = dict(value)
+            if value:
+                return json.dumps(value)
+        return None
+
+    def deserialize(self, value):
+        """
+        Deserializes a map
+        """
+        if value:
+            return dict(json.loads(value))
 
 
 class BinaryAttribute(Attribute):
@@ -257,3 +281,14 @@ class UTCDateTimeAttribute(Attribute):
         Takes a UTC datetime string and returns a datetime object
         """
         return parse(value, dayfirst=False).datetime
+
+
+class MapAttribute(MapMixin, Attribute):
+    """
+    An attribute for storing a Map/Dictionary
+    """
+    attr_type = MAP
+
+    def __init__(self, attr_name=None, inner_type=STRING):
+        self.inner_type = inner_type
+        super(MapAttribute, self).__init__(attr_name=attr_name, hash_key=False, range_key=False)

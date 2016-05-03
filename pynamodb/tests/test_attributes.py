@@ -8,13 +8,13 @@ from datetime import datetime
 from delorean import Delorean
 from mock import patch
 from pynamodb.compat import CompatTestCase as TestCase
-from pynamodb.constants import UTC, DATETIME_FORMAT
+from pynamodb.constants import UTC, DATETIME_FORMAT, MAP
 from pynamodb.models import Model
 from pynamodb.attributes import (
     BinarySetAttribute, BinaryAttribute, NumberSetAttribute, NumberAttribute,
     UnicodeAttribute, UnicodeSetAttribute, UTCDateTimeAttribute, BooleanAttribute,
     JSONAttribute, DEFAULT_ENCODING, NUMBER, STRING, STRING_SET, NUMBER_SET, BINARY_SET,
-    BINARY)
+    BINARY, MapAttribute)
 
 
 class AttributeTestModel(Model):
@@ -104,6 +104,13 @@ class AttributeDescriptorTestCase(TestCase):
         """
         self.instance.json_attr = {'foo': 'bar', 'bar': 42}
         self.assertEqual(self.instance.json_attr, {'foo': 'bar', 'bar': 42})
+
+    def test_map_attr(self):
+        """
+        Map attribute descriptor
+        """
+        self.instance.map_attr = dict({'foo': 'bar', 'bar': 42, 'list': [1, 2, 3, 4, 5]})
+        self.assertEqual(self.instance.map_attr, dict({'foo': 'bar', 'bar': 42, 'list': [1, 2, 3, 4, 5]}))
 
 
 class UTCDateTimeAttributeTestCase(TestCase):
@@ -450,5 +457,44 @@ class JSONAttributeTestCase(TestCase):
         """
         attr = JSONAttribute()
         item = {'foo\t': 'bar\n', 'bool': True, 'number': 3.141}
+        encoded = six.u(json.dumps(item))
+        self.assertEqual(attr.deserialize(encoded), item)
+
+
+class MapAttributeTestCase(TestCase):
+    """
+    Tests map attributes
+    """
+
+    def test_json_attribute(self):
+        """
+        MapAttribute.default
+        """
+        attr = MapAttribute(value_type=STRING)
+        self.assertIsNotNone(attr)
+        self.assertEqual(attr.attr_type, MAP)
+
+    def test_json_serialize(self):
+        """
+        MapAttribute.serialize
+        """
+        attr = MapAttribute(value_type=STRING)
+        item = dict()
+        item['foo'] = 'bar'
+        item['bar'] = 'bob'
+        item['bob'] = '3.1415'
+        self.assertEqual(attr.serialize(item), six.u(json.dumps(item)))
+        self.assertEqual(attr.serialize({}), None)
+        self.assertEqual(attr.serialize(None), None)
+
+    def test_json_deserialize(self):
+        """
+        MapAttribute.deserialize
+        """
+        attr = MapAttribute(value_type=STRING)
+        item = dict()
+        item['foo'] = 'bar'
+        item['bar'] = 'bob'
+        item['bob'] = '3.1415'
         encoded = six.u(json.dumps(item))
         self.assertEqual(attr.deserialize(encoded), item)
